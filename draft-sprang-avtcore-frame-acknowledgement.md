@@ -181,7 +181,19 @@ The One-Byte RTP header extension format is:
 ```
 Where "Extension data" is `N+1` bytes as described above, starting with the FFR/Reserved byte.
 
-#### FFR (2 bits)
+The Two-Byte RTP header extension format is:
+```ascii-art
+    0                   1
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       ID      |   length=N    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Extension data        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+Where "Extension data" is `N` bytes as described above, starting with the FFR/Reserved byte.
+
+#### FFR: FrameID / Feedback Request (2 bits)
 
 This field is located in the first byte of the extension data. It indicates the presence and meaning of the subsequent optional fields. The total number of bytes for the extension data (and thus the value of `N` for the one-byte header's `len` field, or the `length` field for two-byte headers) depends on the FFR value:
 
@@ -292,4 +304,3 @@ The RTCP message uses PT = 205 (RTPFB, Generic RTP Feedback). As of writing, the
 
 # Acknowledgments
 {:numbered="false"}
-
