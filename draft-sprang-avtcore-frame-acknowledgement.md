@@ -96,7 +96,7 @@ Frame Acknowledgement can be used for video streams in most topologies. It is al
 
 In terms of {{?RFC7667}}, Point-to-Point is the most straightforward target as it is easiest to reason about a single receiver. A Media Translator or other systems that include a decoder are similarly easy - from the perspective of the sender the middle box is the receiver.
 
-If a Transport Translator is used for Point-to-Multi-Point, then the middlebox must make sure to make valid translations - e.g. by acknowledging a frame only if all recipients of that stream have acknowledged said frame.
+If a Transport Translator is used for Point-to-Multi-Point, then the middlebox must make sure to make valid translations. See section on [Frame ID considerations](#frame_id_considerations) below.
 
 # Existing Feedback Formats
 
@@ -171,28 +171,6 @@ For a Two-Byte Header (as defined in {{?RFC5285}}, Section 4.3), the `ID` field 
     +-+-+-+-+-+-+-+-+
 ```
 
-The One-Byte RTP header extension format is:
-```ascii-art
-    0                   1
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  ID   | len=N | Extension data|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
-Where "Extension data" is `N+1` bytes as described above, starting with the FFR/Reserved byte.
-
-The Two-Byte RTP header extension format is:
-```ascii-art
-    0                   1
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |       ID      |   length=N    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |         Extension data        |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
-Where "Extension data" is `N` bytes as described above, starting with the FFR/Reserved byte.
-
 #### FFR: FrameID / Feedback Request (2 bits)
 
 This field is located in the first byte of the extension data. It indicates the presence and meaning of the subsequent optional fields. The total number of bytes for the extension data (and thus the value of `N` for the one-byte header's `len` field, or the `length` field for two-byte headers) depends on the FFR value:
@@ -209,24 +187,19 @@ This field is located in the first byte of the extension data. It indicates the 
     For one-byte header: `len` = 0.
     For two-byte header: `length` = 1.
     Feedback is requested for the frame identified by Frame ID (i.e., Feedback Start = Frame ID, Feedback Length = 1).
-*   **10: Feedback request only.**
-    The FFR/Reserved byte is followed by two bytes: a one-byte Feedback Start and a one-byte Feedback Length field.
-    Total extension data bytes = 2 (FFR/Reserved + Feedback Start + Feedback Length).
-    For one-byte header: `len` = 1.
-    For two-byte header: `length` = 2.
-    Feedback is requested for frame IDs spanning from Feedback Start to (Feedback Start + Feedback Length - 1), inclusive, wrapping around if necessary.
-*   **11: Frame ID + independent feedback request.**
+*   **10: Frame ID + independent feedback request.**
     The FFR/Reserved byte is followed by three bytes: a one-byte Frame ID, a one-byte Feedback Start, and a one-byte Feedback Length field.
     Total extension data bytes = 3 (FFR/Reserved + Frame ID + Feedback Start + Feedback Length).
     For one-byte header: `len` = 2.
     For two-byte header: `length` = 3.
     This implies both a frame marking with Frame ID and an independent feedback request for the specified range.
+*   **11: Reserved for future use.**
 
 The remaining 6 bits of the FFR/Reserved byte are reserved and SHOULD be set to 0.
 
 #### Frame ID (8 bits)
 
-Present if FFR is 00, 01, or 11.
+Present if FFR is 00, 01, or 10.
 An unsigned integer that uniquely identifies a frame. It MUST be incremented by one for each new frame (in sending order) that needs to be identified. It wraps around to 0 on overflow.
 
 #### Feedback Start (8 bits)
@@ -241,9 +214,9 @@ An unsigned integer that indicates the number of consecutive frames the sender i
 
 Note that since the Frame ID, Feedback Start, and Feedback Length are 8-bit fields that wrap, care must be taken when calculating ranges. For example, a request with Feedback Start = 254 and Feedback Length = 3 indicates the sender is requesting feedback for frames with Frame IDs 254, 255, and 0.
 
-If a sender is not interested in feedback for frames prior to and including a given Frame ID, it can effectively signal this by sending a request (FFR=01, 10, or 11) where the Feedback Start (or Frame ID for FFR=01) is more recent. This implicitly acknowledges prior frames up to the new Feedback Start. Alternatively, a Feedback Length of 0 can be used with FFR=10 or FFR=11 if no specific frames need feedback but an acknowledgment point needs to be set.
+If a sender is not interested in feedback for frames prior to and including a given Frame ID, it can effectively signal this by sending a request (FFR=01, 10, or 10) where the Feedback Start (or Frame ID for FFR=01) is more recent. This implicitly acknowledges prior frames up to the new Feedback Start. Alternatively, a Feedback Length of 0 can be used with FFR=10 if no specific frames need feedback but an acknowledgment point needs to be set.
 
-## Frame Acknowledgment Feedback RTCP Message
+# Frame Acknowledgment Feedback RTCP Message
 
 The Frame Acknowledgement Feedback message is an RTCP message ({{?RFC4585}}) containing a vector of status symbols, corresponding to the state for the frames requested in a Frame Acknowledgement Extension.
 
@@ -265,15 +238,15 @@ This message is identified by PT = RTPFB (205) and FMT = TBD (to be assigned by 
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-#### Start Frame ID (8 bits)
+## Start Frame ID (8 bits)
 
 The first Frame ID (inclusive) for which feedback is provided in this message. This corresponds to a Frame ID previously sent in a Frame Acknowledgment Request extension.
 
-#### Length (8 bits)
+## Length (8 bits)
 
 An unsigned integer denoting how many consecutive frames, starting from Start Frame ID, this message contains feedback for. The last Frame ID included in the feedback is (Start Frame ID + Length - 1), with wrap-around logic applied to Frame IDs. A Length of 0 indicates no feedback information is present, though this SHOULD NOT be sent.
 
-#### status vector (variable length)
+## status vector (variable length)
 
 A bit vector of the size indicated by the Length field. Each bit corresponds to a Frame ID, starting from Start Frame ID and incrementing by one for each subsequent bit.
 *   A value of **0** indicates the frame has not been received or has not been decoded (or is not expected to be decoded).
@@ -281,12 +254,14 @@ A bit vector of the size indicated by the Length field. Each bit corresponds to 
 
 The status vector MUST be padded with 0 to 23 zero bits to align to the next 32-bit boundary if its length is not a multiple of 32 bits. This padding is not included in the Length field but is included in the RTCP packet's length field.
 
-#### status (N bit)
+# Frame ID considerations {#frame_id_considerations}
 
-A bit vector of the length specified in the length field above. For each bit position, the Frame ID is incremented by one.
+As stated above, the sender MUST increment the Frame ID by one for each new frame in sending order. More than that, it must make sure that no wrap-around ambiguity can occur.
+Since feedback is only really necessary for frames which the codec stores in a reference buffer pending future use, the number of outstanding frames is in practice limited by the number of available reference buffers. E.g. for AV1, the upper limit will be 8. Although the optimal behavior will be application dependent, it is often advisable to spread reference buffer usage out across an RTT and to cull earlier buffer usage once later frames have been acknowledged.
 
-A value of 0 indicates the frame has not been received and decoded.
-A value of 1 indicates the frame has been received and decoded.
+## Point-to-Multi-Point
+
+When considering a multi-way application with an SFU/SFM-type relay in the middle, the middlebox may need to do translations/rewriting of Frame IDs such that the outgoing FrameIDs a middlebox to a receiver still fulfills the requirement that the FrameIDs are incremented by one for each new frame that is marked for feedback. This must be true even if independent video streams for different senders are multiplexed onto the same SSRC. Further the middlebox should typically not acknowledge a frame to a sender unless all active receivers have acknowledged that frame.
 
 # Security Considerations
 
