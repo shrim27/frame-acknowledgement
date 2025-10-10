@@ -172,7 +172,7 @@ For a Two-Byte Header (as defined in {{?RFC5285}}, Section 4.3), the `ID` field 
     +-+-+-+-+-+-+-+-+
 ```
 
-#### FFR: FrameID / Feedback Request (2 bits)
+### FFR: FrameID / Feedback Request (2 bits)
 
 This field is located in the first byte of the extension data. It indicates the presence and meaning of the subsequent optional fields. The total number of bytes for the extension data (and thus the value of `N` for the one-byte header's `len` field, or the `length` field for two-byte headers) depends on the FFR value:
 
@@ -198,20 +198,20 @@ This field is located in the first byte of the extension data. It indicates the 
 
 The remaining 6 bits of the FFR/Reserved byte are reserved and SHOULD be set to 0.
 
-#### Frame ID (8 bits)
+### Frame ID (8 bits)
 
 Present if FFR is 00, 01, or 10.
 An unsigned integer that uniquely identifies a frame. It MUST be incremented by one for each new frame (in sending order) that needs to be identified. It wraps around to 0 on overflow.
 
-#### Feedback Start (8 bits)
+### Feedback Start (8 bits)
 
 Present if FFR is 10 or 11.
 An unsigned integer that corresponds to the first Frame ID (inclusive) the sender is requesting feedback for. It wraps around to 0 on overflow.
 
-#### Feedback Length (8 bits)
+### Feedback Length (8 bits)
 
 Present if FFR is 10 or 11.
-An unsigned integer that indicates the number of consecutive frames the sender is requesting feedback for, starting from Feedback Start. A value of 0 means no frames are being requested. A value of 1 means only the frame identified by Feedback Start is requested. The range is [Feedback Start, Feedback Start + Feedback Length - 1], inclusive, with wrap-around logic applied to Frame IDs.
+An unsigned integer that indicates the number of consecutive frames the sender is requesting feedback for, starting from Feedback Start. A value of 0 means no frames are being requested. A value of 1 means only the frame identified by Feedback Start is requested. The range is Feedback Start to Feedback Start + Feedback Length - 1, inclusive, with wrap-around logic applied to Frame IDs.
 
 Note that since the Frame ID, Feedback Start, and Feedback Length are 8-bit fields that wrap, care must be taken when calculating ranges. For example, a request with Feedback Start = 254 and Feedback Length = 3 indicates the sender is requesting feedback for frames with Frame IDs 254, 255, and 0.
 
@@ -245,7 +245,7 @@ The first Frame ID (inclusive) for which feedback is provided in this message. T
 
 ## Length (8 bits)
 
-An unsigned integer denoting how many consecutive frames, starting from Start Frame ID, this message contains feedback for. The last Frame ID included in the feedback is Start Frame ID + Length - 1, with wrap-around logic applied to Frame IDs. A Length of 0 indicates no feedback information is present, though this SHOULD NOT be sent.
+An unsigned integer denoting how many consecutive frames, starting from Start Frame ID, this message contains feedback for. The last Frame ID included in the feedback is (Start Frame ID + Length - 1), with wrap-around logic applied to Frame IDs. A Length of 0 indicates no feedback information is present, though this SHOULD NOT be sent.
 
 ## status vector (variable length)
 
