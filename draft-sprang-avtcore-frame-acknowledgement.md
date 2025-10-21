@@ -30,6 +30,12 @@ author:
     fullname: Erik Språng
     organization: Google
     email: sprang@google.com
+ -
+    fullname: Gurtej Singh Chandok
+    organization: Apple
+ -
+    fullname: Shridhar Majali
+    organization: Nvidia
 
 normative:
   DD:
