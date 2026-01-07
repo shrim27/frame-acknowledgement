@@ -199,7 +199,7 @@ This field is located in the first byte of the extension data. It indicates the 
     For two-byte header: `length` = 3.
     Feedback is requested for the frame identified by Frame ID (i.e., Feedback Start = Frame ID, Feedback Length = 1).
 *   **10: Frame ID + independent feedback request.**
-    The FFR/Reserved byte is followed by three bytes: a one-byte Frame ID, a one-byte Feedback Start, and a one-byte Feedback Length field.
+    The FFR/Reserved byte is followed by five bytes: a two-byte Frame ID, a two-byte Feedback Start, and a one-byte Feedback Length field.
     Total extension data bytes = 6 (FFR/Reserved + Frame ID + Feedback Start + Feedback Length).
     For one-byte header: `len` = 5.
     For two-byte header: `length` = 6.
