@@ -145,7 +145,7 @@ It SHOULD appear on the last packet of a video frame, and MUST NOT appear more t
 
 ## Frame Identifier
 
-In order to request and receive information about decoded frames, we must be able to identify them. The frame acknowledgement header extension may contain a Frame ID field for this purpose. The Frame ID is an 8-bit unsigned integer field, that wraps around to 0 on overflow.
+In order to request and receive information about decoded frames, we must be able to identify them. The frame acknowledgement header extension may contain a Frame ID field for this purpose. The Frame ID is an 16-bit unsigned integer field, that wraps around to 0 on overflow.
 
 ## Frame Acknowledgment Request
 
@@ -163,7 +163,7 @@ For a One-Byte Header (as defined in {{?RFC5285}}, Section 4.2), the `ID` field 
 
 For a Two-Byte Header (as defined in {{?RFC5285}}, Section 4.3), the `ID` field identifies the extension, and the 8-bit `length` field indicates the total number of bytes for the extension data (i.e., the FFR/Reserved byte plus any optional fields).
 
-```ascii-art
+~~~
  Extension Data:
      0
      0 1 2 3 4 5 6 7
@@ -172,11 +172,15 @@ For a Two-Byte Header (as defined in {{?RFC5285}}, Section 4.3), the `ID` field 
     +-+-+-+-+-+-+-+-+
     |   Frame ID    |  (OPTIONAL, see FFR)
     +-+-+-+-+-+-+-+-+
-    | Feedb. Start  |  (OPTIONAL, see FFR)
+    | Frame ID cont.|  (OPTIONAL, see FFR)
     +-+-+-+-+-+-+-+-+
-    | Feedb. Length |  (OPTIONAL, see FFR)
+    |   Fb. Start   |  (OPTIONAL, see FFR)
     +-+-+-+-+-+-+-+-+
-```
+    | Fb. Start cont|  (OPTIONAL, see FFR)
+    +-+-+-+-+-+-+-+-+
+    |  Fb. Length   |  (OPTIONAL, see FFR)
+    +-+-+-+-+-+-+-+-+
+~~~
 
 ### FFR: FrameID / Feedback Request (2 bits)
 
@@ -184,32 +188,32 @@ This field is located in the first byte of the extension data. It indicates the 
 
 *   **00: Frame ID only.**
     The FFR/Reserved byte is followed by a one-byte Frame ID field.
-    Total extension data bytes = 1 (FFR/Reserved + Frame ID).
-    For one-byte header: `len` = 0.
-    For two-byte header: `length` = 1.
+    Total extension data bytes = 3 (FFR/Reserved + Frame ID).
+    For one-byte header: `len` = 2.
+    For two-byte header: `length` = 3.
     No feedback is explicitly requested by this header.
 *   **01: Frame ID + implicit feedback request.**
     The FFR/Reserved byte is followed by a one-byte Frame ID field.
-    Total extension data bytes = 1 (FFR/Reserved + Frame ID).
-    For one-byte header: `len` = 0.
-    For two-byte header: `length` = 1.
-    Feedback is requested for the frame identified by Frame ID (i.e., Feedback Start = Frame ID, Feedback Length = 1).
-*   **10: Frame ID + independent feedback request.**
-    The FFR/Reserved byte is followed by three bytes: a one-byte Frame ID, a one-byte Feedback Start, and a one-byte Feedback Length field.
-    Total extension data bytes = 3 (FFR/Reserved + Frame ID + Feedback Start + Feedback Length).
+    Total extension data bytes = 3 (FFR/Reserved + Frame ID).
     For one-byte header: `len` = 2.
     For two-byte header: `length` = 3.
+    Feedback is requested for the frame identified by Frame ID (i.e., Feedback Start = Frame ID, Feedback Length = 1).
+*   **10: Frame ID + independent feedback request.**
+    The FFR/Reserved byte is followed by five bytes: a two-byte Frame ID, a two-byte Feedback Start, and a one-byte Feedback Length field.
+    Total extension data bytes = 6 (FFR/Reserved + Frame ID + Feedback Start + Feedback Length).
+    For one-byte header: `len` = 5.
+    For two-byte header: `length` = 6.
     This implies both a frame marking with Frame ID and an independent feedback request for the specified range.
 *   **11: Reserved for future use.**
 
 The remaining 6 bits of the FFR/Reserved byte are reserved and SHOULD be set to 0.
 
-### Frame ID (8 bits)
+### Frame ID (16 bits)
 
 Present if FFR is 00, 01, or 10.
 An unsigned integer that uniquely identifies a frame. It MUST be incremented by one for each new frame (in sending order) that needs to be identified. It wraps around to 0 on overflow.
 
-### Feedback Start (8 bits)
+### Feedback Start (16 bits)
 
 Present if FFR is 10 or 11.
 An unsigned integer that corresponds to the first Frame ID (inclusive) the sender is requesting feedback for. It wraps around to 0 on overflow.
@@ -219,7 +223,7 @@ An unsigned integer that corresponds to the first Frame ID (inclusive) the sende
 Present if FFR is 10 or 11.
 An unsigned integer that indicates the number of consecutive frames the sender is requesting feedback for, starting from Feedback Start. A value of 0 means no frames are being requested. A value of 1 means only the frame identified by Feedback Start is requested. The range is Feedback Start to Feedback Start + Feedback Length - 1, inclusive, with wrap-around logic applied to Frame IDs.
 
-Note that since the Frame ID, Feedback Start, and Feedback Length are 8-bit fields that wrap, care must be taken when calculating ranges. For example, a request with Feedback Start = 254 and Feedback Length = 3 indicates the sender is requesting feedback for frames with Frame IDs 254, 255, and 0.
+Note that since the Frame ID and Feedback Start are 16-bit fields that wrap, care must be taken when calculating ranges. For example, a request with Feedback Start = 65534 and Feedback Length = 3 indicates the sender is requesting feedback for frames with Frame IDs 65534, 65535, and 0.
 
 If a sender is not interested in feedback for frames prior to and including a given Frame ID, it can effectively signal this by sending a request (FFR=01, 10, or 10) where the Feedback Start (or Frame ID for FFR=01) is more recent. This implicitly acknowledges prior frames up to the new Feedback Start. Alternatively, a Feedback Length of 0 can be used with FFR=10 if no specific frames need feedback but an acknowledgment point needs to be set.
 
@@ -229,7 +233,7 @@ The Frame Acknowledgement Feedback message is an RTCP message ({{?RFC4585}}) con
 
 This message is identified by PT = RTPFB (205) and FMT = TBD (to be assigned by IANA, suggested value 12).
 
-```ascii-art
+~~~
      0                   1                   2                   3
      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -239,13 +243,13 @@ This message is identified by PT = RTPFB (205) and FMT = TBD (to be assigned by 
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                  SSRC of media source                         |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    | Start FrameID |    Length     |      status vector + padding  |
+    | Start FrameID                 |    Length     | status vector |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                            ...                                |
+    |                 status vector + padding                       |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
+~~~
 
-## Start Frame ID (8 bits)
+## Start Frame ID (16 bits)
 
 The first Frame ID (inclusive) for which feedback is provided in this message. This corresponds to a Frame ID previously sent in a Frame Acknowledgment Request extension.
 
